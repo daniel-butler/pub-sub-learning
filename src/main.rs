@@ -2,7 +2,60 @@ use std::{env, process};
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::OpenOptionsExt;
+use md5::{Digest, Md5};
+use serde::{Deserialize, Serialize};
+
 const INPUT_PATH: &str = "/tmp/pub-in-fifo";
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Message {
+    content: String,
+    check_sum: Option<String>
+}
+
+impl Message {
+
+    pub fn new(content: String) -> Self {
+        match content.as_bytes().len() {
+            0 => {
+                Message {
+                    content,
+                    check_sum: None
+                }
+            },
+            _ => {
+                let mut hasher = Md5::new();
+                hasher.update(content.as_bytes());
+                Message {
+                    content,
+                    check_sum: Some(hex::encode(hasher.finalize()))
+                }
+            }
+        }
+    }
+
+    pub fn prepare_send(&mut self) {
+        // Create check sum
+        let mut hasher = Md5::new();
+        hasher.update(self.content.as_bytes());
+        self.check_sum = Some(hex::encode(hasher.finalize()));
+    }
+
+    pub fn validate(&mut self) -> bool {
+        // Check if check_sum is None. If it is, always return false
+        if self.check_sum == None {
+            println!("No check_sum. Always false!");
+            return false;
+        }
+
+        let mut hasher = Md5::new();
+        hasher.update(self.content.as_bytes());
+        let temp_check_sum: String = hex::encode(hasher.finalize());
+
+        self.check_sum == Some(temp_check_sum)
+    }
+}
+
 
 fn main() {
 
@@ -31,8 +84,14 @@ fn run_pub() {
     loop {
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).expect("Failed to read input!");
+        let input = input.trim_end();
 
-        output.write_all(input.trim().as_bytes())
+        let mut message: Message = Message::new(input.to_string());
+        message.prepare_send();
+
+        output.write_all(serde_json::to_string(&message)
+            .expect("Failed to serialize message")
+            .as_bytes())
             .expect("Failed to write to INPUT");
         output.write_all(b"\n").expect("Failed to write newline to INPUT");
     }
@@ -80,11 +139,21 @@ fn run_sub() {
 
     for line in reader.lines() {
         match line {
-            Ok(message) => println!("Received: {}", message),
+            Ok(raw_content) => {
+                println!("Received Raw Content: {}", raw_content);
+                let mut message: Message = serde_json::from_str(&raw_content)
+                    .expect("Failed to parse JSON");
+                if message.validate() {
+                    println!("Received message: {:?} and check sum {:?}", message.content, message.check_sum.unwrap());
+                } else {
+                    println!("Content invalid. Check sum does not match!")
+                };
+
+            },
             Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
                 // No data sleep for a bit
                 std::thread::sleep(std::time::Duration::from_millis(300));
-            }
+            },
             Err(e) => {
                 eprint!("Error reading from INPUT: {}", e);
                 break;
