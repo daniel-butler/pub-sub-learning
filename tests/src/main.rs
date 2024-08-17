@@ -1,7 +1,7 @@
-use std::{env, process};
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
+use std::{env, process};
 
 const OUTPUT_PATH: &str = "/tmp/pub-out-fifo";
 
