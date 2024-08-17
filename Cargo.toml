@@ -1,5 +1,7 @@
 [package]
 name = "pub-sub-learning"
+description = "A simple pub-sub system for learning purposes"
+authors = ["Daniel Butler <me@daniel-butler.com>"]
 version = "0.1.0"
 edition = "2021"
 
@@ -7,5 +9,10 @@ edition = "2021"
 
 [dependencies]
 libc = "0.2.155"
+md-5 = "0.10.6"
 nix = { version = "0.29.0", features = ["fs"] }
 rand = "0.9.0-alpha.2"
+serde = { version = "1.0.208", features = ["derive"] }
+serde_json = "1.0.125"
+hex = "0.4.3"
+chrono = "0.4.38"
