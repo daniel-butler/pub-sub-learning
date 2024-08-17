@@ -1,4 +1,4 @@
-use std::env;
+use std::{env, process};
 use std::fs::OpenOptions;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Command, Stdio};
@@ -7,6 +7,14 @@ const OUTPUT_PATH: &str = "/tmp/pub-out-fifo";
 
 #[test]
 fn test_pub_sub() {
+    // Create the output pipe file
+    if let Err(e) = nix::unistd::mkfifo(OUTPUT_PATH, nix::sys::stat::Mode::S_IRWXU) {
+        if e != nix::errno::Errno::EEXIST {
+            eprintln!("Failed to create INPUT: {}", e);
+            process::exit(1);
+        }
+    }
+
     // Start the pub and sub processes
     let exe_filepath = env!("CARGO_BIN_EXE_pub-sub-learning");
     let mut sub_command = Command::new(exe_filepath)
