@@ -140,10 +140,10 @@ fn run_sub() {
                     serde_json::from_str(&raw_content).expect("Failed to parse JSON");
 
                 if message.validate() {
-                    println!(
-                        "Received message: {:?} Check sum: {:?} Created at: {:?}",
-                        message.content, message.check_sum, message.created_at
-                    );
+                    // println!(
+                    //     "Received message: {:?} Check sum: {:?} Created at: {:?}",
+                    //     message.content, message.check_sum, message.created_at
+                    // );
                     output
                         .write_all(
                             serde_json::to_string(&message)
