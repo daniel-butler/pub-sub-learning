@@ -1,5 +1,4 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use std::io::{Write};
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::process::{Command, Stdio};
 use std::{env, process};
 
@@ -45,13 +44,6 @@ fn benchmark_pub_sub(c: &mut Criterion) {
                 .stdout(Stdio::piped())
                 .spawn()
                 .expect("Failed to start pub");
-
-            pub_command
-                .stdin
-                .as_mut()
-                .unwrap()
-                .write_all(black_box("Hello World\n".as_bytes()))
-                .unwrap();
 
             pub_command.kill().unwrap();
             sub_command.kill().unwrap();

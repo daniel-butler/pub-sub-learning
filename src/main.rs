@@ -1,12 +1,14 @@
 use md5::{Digest, Md5};
 use serde::{Deserialize, Serialize};
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::{env, process};
+use rand::distr::{Alphanumeric, DistString};
+use rand::Rng;
 
-const INPUT_PATH: &str = "/tmp/pub-in-fifo";
-const OUTPUT_PATH: &str = "/tmp/pub-out-fifo";
+const INPUT_PIPE_PATH: &str = "/tmp/pub-in-fifo";
+const OUTPUT_FILE_PATH: &str = "/tmp/pub-out-file";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct Message {
@@ -36,6 +38,12 @@ impl Message {
 }
 
 fn main() {
+    // Sentry tracking
+    let _guard = sentry::init(("https://02f4b2bfd801840eb2006e9e6f166d7b@o4507817665888256.ingest.us.sentry.io/4507817668640768", sentry::ClientOptions {
+        release: sentry::release_name!(),
+        ..Default::default()
+    }));
+
     // Parse arguments
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
@@ -52,20 +60,38 @@ fn main() {
     }
 }
 
+fn setup_input_and_outputs() {
+    // Create the INPUT file if it does not exist
+    if let Err(e) = nix::unistd::mkfifo(INPUT_PIPE_PATH, nix::sys::stat::Mode::S_IRWXU) {
+        if e != nix::errno::Errno::EEXIST {
+            eprintln!("Failed to create input file {}: {}", INPUT_PIPE_PATH, e);
+            process::exit(1);
+        }
+    }
+
+    // Create the OUTPUT file if it does not exist
+    File::create(OUTPUT_FILE_PATH).expect("Failed to create OUTPUT file!");
+}
+
 fn run_pub() {
-    println!("Running as pub! Type messages to sub (Ctrl+C to quit):");
+    println!("Running as pub! Here is a sample of the messages sent to sub (Ctrl+C to quit):");
+    setup_input_and_outputs();
+
     let mut output = OpenOptions::new()
         .write(true)
-        .open(INPUT_PATH)
+        .open(INPUT_PIPE_PATH)
         .expect("Failed to open INPUT with write permissions!");
 
-    loop {
-        let mut input = String::new();
-        std::io::stdin()
-            .read_line(&mut input)
-            .expect("Failed to read input!");
-        input = input.trim_end().to_string();
+    println!("Starting the count");
+    let mut count: i32 = 0;
 
+    loop {
+        println!("Sending message count {}", count);
+        count = count + 1;
+        let input: String = Alphanumeric.sample_string(
+            &mut rand::thread_rng(),
+            rand::thread_rng().gen_range(5000..10000));
+        println!("Random input string {}", input);
         let message: Message = Message::new(input);
         output
             .write_all(
@@ -77,37 +103,29 @@ fn run_pub() {
         output
             .write_all(b"\n")
             .expect("Failed to write newline to INPUT");
+
+        if count % 100 == 0 {
+            println!("Sent {:?} message, count {}", message, count);
+        }
+        if count == 1000 {
+            break;
+        }
     }
 }
 
 fn run_sub() {
     println!("Running as sub! Waiting for messages...");
+    setup_input_and_outputs();
 
-    // Create the OUTPUT file if it does not exist
-    if let Err(e) = nix::unistd::mkfifo(OUTPUT_PATH, nix::sys::stat::Mode::S_IRWXU) {
-        if e != nix::errno::Errno::EEXIST {
-            eprintln!("Failed to create INPUT: {}", e);
-            process::exit(1);
-        }
-    }
     let mut output = OpenOptions::new()
         .write(true)
-        .custom_flags(libc::O_NONBLOCK)
-        .open(OUTPUT_PATH)
+        .open(OUTPUT_FILE_PATH)
         .expect("Failed to open OUTPUT for writing!");
-
-    // Create the INPUT file if it does not exist
-    if let Err(e) = nix::unistd::mkfifo(INPUT_PATH, nix::sys::stat::Mode::S_IRWXU) {
-        if e != nix::errno::Errno::EEXIST {
-            eprintln!("Failed to create INPUT: {}", e);
-            process::exit(1);
-        }
-    }
 
     let input = OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NONBLOCK)
-        .open(INPUT_PATH)
+        .open(INPUT_PIPE_PATH)
         .expect("Failed to open INPUT for reading!");
 
     let mut reader = BufReader::new(input);
@@ -133,17 +151,23 @@ fn run_sub() {
         }
     }
 
+    let mut count: i32 = 0;
+
     for line in reader.lines() {
         match line {
             Ok(raw_content) => {
+                count = count + 1;
+                println!("Count {}", count);
+                println!("Received raw content: {}", raw_content);
+                if raw_content.is_empty() {
+                    println!("Received empty content. Skipping...");
+                    continue;
+                }
                 let mut message: Message =
                     serde_json::from_str(&raw_content).expect("Failed to parse JSON");
 
                 if message.validate() {
-                    // println!(
-                    //     "Received message: {:?} Check sum: {:?} Created at: {:?}",
-                    //     message.content, message.check_sum, message.created_at
-                    // );
+                    println!("Received message is valid");
                     output
                         .write_all(
                             serde_json::to_string(&message)
