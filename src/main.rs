@@ -4,8 +4,6 @@ use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
-use std::os::unix::fs::OpenOptionsExt;
-use std::time::Duration;
 use std::{env, process};
 
 const INPUT_PIPE_PATH: &str = "/tmp/pub-in-fifo";
