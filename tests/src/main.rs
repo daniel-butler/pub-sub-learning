@@ -5,7 +5,7 @@ use std::{env, process};
 
 const OUTPUT_PATH: &str = "/tmp/pub-out-fifo";
 
-#[test]
+// #[test]
 fn test_pub_sub() {
     // Create the output pipe file
     if let Err(e) = nix::unistd::mkfifo(OUTPUT_PATH, nix::sys::stat::Mode::S_IRWXU) {

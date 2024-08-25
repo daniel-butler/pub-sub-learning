@@ -41,11 +41,11 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
         println!("Usage: {} <pub|sub>", args[0]);
-        println!("  pub: Publish messages");
+        println!("  pub: Publish messages AND gen to generate random data");
         println!("  sub: Subscribe to messages");
     }
     match args[1].as_str() {
-        "pub" => run_pub(),
+        "pub" => run_pub(args.len() > 2 && args[2] == "gen"),
         "sub" => run_sub(),
         _ => {
             println!("Invalid argument: {}. Use 'pub' or 'sub'", args[1]);
@@ -66,7 +66,7 @@ fn setup_input_and_outputs() {
     File::create(OUTPUT_FILE_PATH).expect("Failed to create OUTPUT file!");
 }
 
-fn run_pub() {
+fn run_pub(generate_data: bool) {
     println!("Running as pub! Here is a sample of the messages sent to sub (Ctrl+C to quit):");
     setup_input_and_outputs();
 
@@ -80,11 +80,20 @@ fn run_pub() {
 
     loop {
         println!("Sending message count {}", count);
-        count = count + 1;
-        let input: String = Alphanumeric.sample_string(
-            &mut rand::thread_rng(),
-            rand::thread_rng().gen_range(5000..10000),
-        );
+        count += 1;
+
+        let mut input: String = String::new();
+        if generate_data {
+            input = Alphanumeric.sample_string(
+                &mut rand::thread_rng(),
+                rand::thread_rng().gen_range(5000..10000),
+            );
+        } else {
+            std::io::stdin()
+                .read_line(&mut input)
+                .expect("Failed to read input!");
+            input = input.trim_end().to_string();
+        }
         println!("Random input string {}", input);
         let message: Message = Message::new(input);
         output
@@ -149,7 +158,7 @@ fn run_sub() {
     for line in reader.lines() {
         match line {
             Ok(raw_content) => {
-                count = count + 1;
+                count += 1;
                 println!("Count {}", count);
                 println!("Received raw content: {}", raw_content);
                 if raw_content.is_empty() {
