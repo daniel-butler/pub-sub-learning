@@ -1,12 +1,12 @@
 use md5::{Digest, Md5};
+use rand::distr::{Alphanumeric, DistString};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::OpenOptionsExt;
-use std::{env, process};
 use std::time::Duration;
-use rand::distr::{Alphanumeric, DistString};
-use rand::Rng;
+use std::{env, process};
 
 const INPUT_PIPE_PATH: &str = "/tmp/pub-in-fifo";
 const OUTPUT_FILE_PATH: &str = "/tmp/pub-out-file";
@@ -91,7 +91,8 @@ fn run_pub() {
         count = count + 1;
         let input: String = Alphanumeric.sample_string(
             &mut rand::thread_rng(),
-            rand::thread_rng().gen_range(5000..10000));
+            rand::thread_rng().gen_range(5000..10000),
+        );
         println!("Random input string {}", input);
         let message: Message = Message::new(input);
         output

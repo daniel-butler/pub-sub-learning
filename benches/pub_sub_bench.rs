@@ -28,7 +28,6 @@ fn benchmark_pub_sub(c: &mut Criterion) {
 
     c.bench_function("pub_sub", |b| {
         b.iter(|| {
-
             let exe_filepath = env!("CARGO_BIN_EXE_pub-sub-learning");
 
             let mut sub_command = Command::new(exe_filepath)
