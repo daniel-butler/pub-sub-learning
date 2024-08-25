@@ -4,6 +4,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::OpenOptionsExt;
 use std::{env, process};
+use std::time::Duration;
 use rand::distr::{Alphanumeric, DistString};
 use rand::Rng;
 
@@ -124,11 +125,10 @@ fn run_sub() {
 
     let input = OpenOptions::new()
         .read(true)
-        .custom_flags(libc::O_NONBLOCK)
         .open(INPUT_PIPE_PATH)
         .expect("Failed to open INPUT for reading!");
 
-    let mut reader = BufReader::new(input);
+    let mut reader = BufReader::with_capacity(50 * 1024, input);
 
     // Wait for the input pipe to be ready
     loop {
