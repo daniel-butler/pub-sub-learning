@@ -39,12 +39,6 @@ impl Message {
 }
 
 fn main() {
-    // Sentry tracking
-    let _guard = sentry::init(("https://02f4b2bfd801840eb2006e9e6f166d7b@o4507817665888256.ingest.us.sentry.io/4507817668640768", sentry::ClientOptions {
-        release: sentry::release_name!(),
-        ..Default::default()
-    }));
-
     // Parse arguments
     let args: Vec<String> = env::args().collect();
     if args.len() != 2 {
