@@ -76,7 +76,7 @@ fn run_pub(generate_data: bool) {
         .expect("Failed to open INPUT with write permissions!");
 
     println!("Starting the count");
-    let mut count: i32 = 0;
+    let mut count: u64 = 0;
 
     loop {
         println!("Sending message count {}", count);
@@ -86,7 +86,7 @@ fn run_pub(generate_data: bool) {
         if generate_data {
             input = Alphanumeric.sample_string(
                 &mut rand::thread_rng(),
-                rand::thread_rng().gen_range(5000..10000),
+                rand::thread_rng().gen_range(50000..100000),
             );
         } else {
             std::io::stdin()
@@ -110,7 +110,7 @@ fn run_pub(generate_data: bool) {
         if count % 100 == 0 {
             println!("Sent {:?} message, count {}", message, count);
         }
-        if count == 1000 {
+        if count == 1000000000 {
             break;
         }
     }
@@ -153,23 +153,22 @@ fn run_sub() {
         }
     }
 
-    let mut count: i32 = 0;
-
+    let mut count: u64 = 0;
     for line in reader.lines() {
         match line {
             Ok(raw_content) => {
                 count += 1;
-                println!("Count {}", count);
-                println!("Received raw content: {}", raw_content);
+                if (count % 100) == 0 {
+                    println!("Received message count: {}", count);
+                }
+
                 if raw_content.is_empty() {
                     println!("Received empty content. Skipping...");
                     continue;
                 }
                 let mut message: Message =
                     serde_json::from_str(&raw_content).expect("Failed to parse JSON");
-
                 if message.validate() {
-                    println!("Received message is valid");
                     output
                         .write_all(
                             serde_json::to_string(&message)
